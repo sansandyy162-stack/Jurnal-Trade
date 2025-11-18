@@ -273,18 +273,32 @@ async function deleteDataFromSheets(id) {
 }
 
 // Fungsi untuk menghapus data trading - TAMBAHKAN INI (replace yang existing jika ada)
+// Fungsi untuk menghapus data trading - PERBAIKI INI
 async function deleteTradingData(id) {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) {
         return;
     }
     
     try {
+        console.log('🔄 Mulai proses hapus data, ID:', id);
+        
+        // Cari data yang akan dihapus
+        const dataToDelete = tradingData.find(item => item.id === id);
+        if (!dataToDelete) {
+            alert('❌ Data tidak ditemukan di memori lokal');
+            return;
+        }
+        
+        console.log('Data yang akan dihapus:', dataToDelete);
+        
         // Hapus dari Google Sheets terlebih dahulu
+        console.log('🗑️ Menghapus dari Google Sheets...');
         const deleteSuccess = await deleteDataFromSheets(id);
         
         if (deleteSuccess) {
             // Hapus dari array lokal
             tradingData = tradingData.filter(item => item.id !== id);
+            console.log('✅ Data dihapus dari array lokal');
             
             // Update tampilan
             updateHomeSummary();
@@ -1284,6 +1298,7 @@ function showSection(sectionId) {
     }
 
 }
+
 
 
 
