@@ -177,7 +177,6 @@ function loadFromLocalStorage() {
 */
 
 // Fungsi untuk save data ke Google Apps Script - FIXED VERSION (NO LOCALSTORAGE)
-// ⭐⭐ GANTI fungsi saveData dengan ini: ⭐⭐
 async function saveData() {
     console.log('💾 Menyimpan data ke Google Sheets...');
     console.log('Data to save:', tradingData);
@@ -185,32 +184,31 @@ async function saveData() {
     try {
         console.log('🔄 Mengirim data ke Google Apps Script...');
         
-        // GUNAKAN addData UNTUK SINGLE RECORD
-        const latestData = tradingData[tradingData.length - 1]; // Ambil data terbaru
-        const requestData = {
+        const latestData = tradingData[tradingData.length - 1];
+        
+        // ⭐⭐ BUAT URL DENGAN PARAMETERS ⭐⭐
+        const params = new URLSearchParams({
             action: 'addData',
-            id: latestData.id,
-            tanggalMasuk: latestData.tanggalMasuk,
-            tanggalKeluar: latestData.tanggalKeluar,
-            kodeSaham: latestData.kodeSaham,
-            hargaMasuk: latestData.hargaMasuk,
-            hargaKeluar: latestData.hargaKeluar,
-            lot: latestData.lot,
-            feeBroker: latestData.feeBroker,
-            metodeTrading: latestData.metodeTrading,
-            catatan: latestData.catatan,
-            profitLoss: latestData.profitLoss
-        };
+            id: latestData.id || '',
+            tanggalMasuk: latestData.tanggalMasuk || '',
+            tanggalKeluar: latestData.tanggalKeluar || '',
+            kodeSaham: latestData.kodeSaham || '',
+            hargaMasuk: latestData.hargaMasuk || 0,
+            hargaKeluar: latestData.hargaKeluar || 0,
+            lot: latestData.lot || 1,
+            feeBroker: latestData.feeBroker || 0.4026,
+            metodeTrading: latestData.metodeTrading || 'Scalping',
+            catatan: latestData.catatan || '',
+            profitLoss: latestData.profitLoss || 0
+        });
         
-        console.log('Mengirim request ke:', APPS_SCRIPT_URL);
-        console.log('Request data:', requestData);
+        const urlWithParams = `${APPS_SCRIPT_URL}?${params.toString()}`;
+        console.log('Mengirim request ke:', urlWithParams);
         
-        const response = await fetch(APPS_SCRIPT_URL, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
+        // ⭐⭐ GET TANPA BODY ⭐⭐
+        const response = await fetch(urlWithParams, {
+            method: 'GET'
+            // NO headers, NO body untuk GET
         });
         
         console.log('Response status:', response.status);
@@ -235,6 +233,8 @@ async function saveData() {
         return false;
     }
 }
+
+
 // Fungsi untuk generate ID unik
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -1181,4 +1181,5 @@ function showSection(sectionId) {
     }
 
 }
+
 
