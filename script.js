@@ -318,10 +318,9 @@ async function deleteTradingData(id) {
 
 // Fungsi untuk generate ID unik - FULL ANGKA
 function generateId() {
-    // ⭐⭐ TIMESTAMP + RANDOM ANGKA 4 digit ⭐⭐
-    const timestamp = Date.now(); // 13 digit
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0'); // 4 digit
-    return parseInt(timestamp + random); // Hasil: 17 digit angka
+    // ⭐⭐ 8 DIGIT RANDOM ANGKA ⭐⭐
+    const random = Math.floor(Math.random() * 90000000) + 10000000;
+    return random.toString();
 }
 
 // Fungsi untuk menghitung fee otomatis berdasarkan persentase 0.4026%
@@ -1326,6 +1325,7 @@ function showSection(sectionId) {
     }
 
 }
+
 
 
 
