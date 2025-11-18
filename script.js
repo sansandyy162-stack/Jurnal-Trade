@@ -124,6 +124,7 @@ async function loadData() {
         if (result.data && result.data.length > 1) {
             // Konversi data dari array ke objek
             tradingData = result.data.slice(1).map((row, index) => {
+				const rowId = row[0] || generateId(); // Kolom A adalah ID
                 let feeValue = parseFloat(row[7]) || 0;
                 
                 // Handle data lama: jika nilai fee < 1, convert ke Rupiah
@@ -136,7 +137,7 @@ async function loadData() {
                 }
                 
                 return {
-                    id: row[0] || generateId(),
+                    id: rowId,
                     tanggalMasuk: row[1] || new Date().toISOString().split('T')[0],
                     tanggalKeluar: row[2] || new Date().toISOString().split('T')[0],
                     kodeSaham: row[3] || 'UNKNOWN',
@@ -150,6 +151,8 @@ async function loadData() {
                 };
             });
             console.log(`✅ Load ${tradingData.length} records berhasil dari Google Sheets`);
+			// ⭐⭐ LOG SEMUA ID UNTUK DEBUG ⭐⭐
+    		console.log('📋 Semua ID yang di-load:', tradingData.map(item => item.id));
         } else {
             tradingData = [];
             console.log('ℹ️ Tidak ada data di Google Sheets');
@@ -884,22 +887,44 @@ async function handleEditSubmit(event) {
 }
 
 // Hapus data trading
+// Fungsi untuk menghapus data trading - PERBAIKI INI
 async function deleteTradingData(id) {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) {
         return;
     }
     
-    tradingData = tradingData.filter(item => item.id !== id);
-    
-    // Simpan perubahan
-    await saveData();
-    
-    // Update tampilan
-    updateHomeSummary();
-    displayTradingData();
-    
-    // Tampilkan notifikasi
-    alert('Data trading berhasil dihapus!');
+    try {
+        console.log('🔄 Mulai proses hapus data, ID:', id);
+        
+        // Cari data yang akan dihapus
+        const dataToDelete = tradingData.find(item => item.id === id);
+        if (!dataToDelete) {
+            alert('❌ Data tidak ditemukan di memori lokal');
+            return;
+        }
+        
+        console.log('Data yang akan dihapus:', dataToDelete);
+        
+        // Hapus dari Google Sheets terlebih dahulu
+        console.log('🗑️ Menghapus dari Google Sheets...');
+        const deleteSuccess = await deleteDataFromSheets(id);
+        
+        if (deleteSuccess) {
+            // Hapus dari array lokal
+            tradingData = tradingData.filter(item => item.id !== id);
+            console.log('✅ Data dihapus dari array lokal');
+            
+            // Update tampilan
+            updateHomeSummary();
+            displayTradingData();
+            
+            // Tampilkan notifikasi
+            alert('✅ Data berhasil dihapus dari Google Sheets!');
+        }
+    } catch (error) {
+        console.error('Error deleting data:', error);
+        alert('❌ Gagal menghapus data: ' + error.message);
+    }
 }
 
 // ⭐⭐⭐ PASTE KODE DI SINI ⭐⭐⭐
@@ -1298,6 +1323,7 @@ function showSection(sectionId) {
     }
 
 }
+
 
 
 
