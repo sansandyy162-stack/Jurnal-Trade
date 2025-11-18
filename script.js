@@ -5,7 +5,8 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjrJQodARnBDZ8
 let tradingData = [];
 let lineChart, pieChart, winRateChart, distributionChart; // ⭐ UPDATE INI
 let useLocalStorage = false;
-
+// ⭐⭐ VARIABLE BARU UNTUK OFFLINE SYNC ⭐⭐
+let pendingDeletions = JSON.parse(localStorage.getItem('pendingDeletions') || '[]');
 
 // Inisialisasi aplikasi
 document.addEventListener('DOMContentLoaded', function() {
@@ -151,6 +152,14 @@ async function loadData() {
                 };
             });
             console.log(`✅ Load ${tradingData.length} records berhasil dari Google Sheets`);
+			// ⭐⭐ FILTER OUT DATA YANG SUDAH DIHAPUS OFFLINE ⭐⭐
+			    if (pendingDeletions.length > 0) {
+			        const originalCount = tradingData.length;
+			        tradingData = tradingData.filter(item => 
+			            !pendingDeletions.some(deletion => deletion.id === item.id)
+			        );
+			        console.log(`🔄 Filtered ${originalCount - tradingData.length} pending deletions`);
+			    }
 			// ⭐⭐ LOG SEMUA ID UNTUK DEBUG ⭐⭐
     		console.log('📋 Semua ID yang di-load:', tradingData.map(item => item.id));
         } else {
@@ -275,7 +284,7 @@ async function deleteDataFromSheets(id) {
     }
 }
 
-// Fungsi untuk menghapus data trading - SOLUSI OPTIMAL
+// 🚀 FUNGSI DELETE YANG OPTIMAL - OFFLINE CAPABLE
 async function deleteTradingData(id) {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) {
         return;
@@ -293,69 +302,123 @@ async function deleteTradingData(id) {
         
         console.log('Data yang akan dihapus:', dataToDelete);
         
-        // ⭐⭐ GUNAKAN KOMBINASI UNIK: kodeSaham + tanggalMasuk + hargaMasuk ⭐⭐
-        const deleteSuccess = await deleteDataByUniqueFields(dataToDelete);
+        // ⭐⭐ 1. HAPUS DARI ARRAY LOKAL DULU ⭐⭐
+        tradingData = tradingData.filter(item => item.id !== id);
+        console.log('✅ Data dihapus dari memori lokal');
         
-        if (deleteSuccess) {
-            // Hapus dari array lokal
-            tradingData = tradingData.filter(item => item.id !== id);
-            console.log('✅ Data dihapus dari array lokal');
-            
-            // Update tampilan
-            updateHomeSummary();
-            displayTradingData();
-            
-            // Tampilkan notifikasi
-            alert('✅ Data berhasil dihapus dari Google Sheets!');
-        }
+        // ⭐⭐ 2. UPDATE UI SEKARANG JUGA ⭐⭐
+        updateHomeSummary();
+        displayTradingData();
+        
+        // ⭐⭐ 3. SIMPAN KE pendingDeletions UNTUK SYNC ⭐⭐
+        pendingDeletions.push({
+            id: dataToDelete.id,
+            kodeSaham: dataToDelete.kodeSaham,
+            tanggalMasuk: dataToDelete.tanggalMasuk,
+            timestamp: Date.now()
+        });
+        
+        // ⭐⭐ 4. SIMPAN KE LOCALSTORAGE ⭐⭐
+        localStorage.setItem('pendingDeletions', JSON.stringify(pendingDeletions));
+        
+        // ⭐⭐ 5. COBA SYNC KE SERVER DI BACKGROUND ⭐⭐
+        syncPendingDeletions();
+        
+        alert('✅ Data berhasil dihapus!');
+        
     } catch (error) {
         console.error('Error deleting data:', error);
         alert('❌ Gagal menghapus data: ' + error.message);
     }
 }
-
-// ⭐⭐ FUNGSI BARU: Hapus berdasarkan kombinasi unique fields ⭐⭐
-async function deleteDataByUniqueFields(data) {
+// 🚀 FUNGSI SYNC BACKGROUND UNTUK OFFLINE SUPPORT
+async function syncPendingDeletions() {
+    if (pendingDeletions.length === 0) return;
+    
+    console.log('🔄 Checking pending deletions:', pendingDeletions.length);
+    
+    // Cek koneksi internet
+    if (!navigator.onLine) {
+        console.log('📴 Offline, skip sync');
+        return;
+    }
+    
     try {
-        console.log('🗑️ Menghapus data berdasarkan unique fields...');
+        // Copy array untuk menghindari race condition
+        const toSync = [...pendingDeletions];
         
-        const params = new URLSearchParams({
-            action: 'deleteByUniqueFields',
-            kodeSaham: String(data.kodeSaham || ''),
-            tanggalMasuk: String(data.tanggalMasuk || ''),
-            hargaMasuk: String(data.hargaMasuk || 0),
-            lot: String(data.lot || 1)
-        });
-        
-        const url = `${APPS_SCRIPT_URL}?${params}`;
-        console.log('Mengirim request ke:', url);
-        
-        const response = await fetch(url, {
-            method: 'GET'
-        });
-        
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        for (const deletion of toSync) {
+            console.log('🔄 Syncing deletion:', deletion);
+            
+            const success = await deleteDataFromSheets(deletion.id);
+            
+            if (success) {
+                // Hapus dari pendingDeletions jika berhasil
+                pendingDeletions = pendingDeletions.filter(p => 
+                    p.id !== deletion.id || p.timestamp !== deletion.timestamp
+                );
+                
+                localStorage.setItem('pendingDeletions', JSON.stringify(pendingDeletions));
+                console.log('✅ Sync success for:', deletion.kodeSaham);
+            }
         }
-        
-        const result = await response.json();
-        console.log('Response dari Google Sheets:', result);
-        
-        if (result.error) {
-            throw new Error(`Google Sheets error: ${result.error}`);
-        }
-        
-        console.log('✅ Data berhasil dihapus dari Google Sheets:', result);
-        return true;
         
     } catch (error) {
-        console.error('❌ Gagal menghapus dari Google Sheets:', error);
-        throw error;
+        console.warn('⚠️ Sync failed, will retry later:', error);
     }
 }
 
+// // ⭐⭐ FUNGSI BARU: Hapus berdasarkan kombinasi unique fields ⭐⭐
+// async function deleteDataByUniqueFields(data) {
+//     try {
+//         console.log('🗑️ Menghapus data berdasarkan unique fields...');
+        
+//         const params = new URLSearchParams({
+//             action: 'deleteByUniqueFields',
+//             kodeSaham: String(data.kodeSaham || ''),
+//             tanggalMasuk: String(data.tanggalMasuk || ''),
+//             hargaMasuk: String(data.hargaMasuk || 0),
+//             lot: String(data.lot || 1)
+//         });
+        
+//         const url = `${APPS_SCRIPT_URL}?${params}`;
+//         console.log('Mengirim request ke:', url);
+        
+//         const response = await fetch(url, {
+//             method: 'GET'
+//         });
+        
+//         console.log('Response status:', response.status);
+        
+//         if (!response.ok) {
+//             throw new Error(`HTTP error! status: ${response.status}`);
+//         }
+        
+//         const result = await response.json();
+//         console.log('Response dari Google Sheets:', result);
+        
+//         if (result.error) {
+//             throw new Error(`Google Sheets error: ${result.error}`);
+//         }
+        
+//         console.log('✅ Data berhasil dihapus dari Google Sheets:', result);
+//         return true;
+        
+//     } catch (error) {
+//         console.error('❌ Gagal menghapus dari Google Sheets:', error);
+//         throw error;
+//     }
+// }
+// ⭐⭐ FUNGSI UNTUK LIHAT STATUS SYNC (opsional) ⭐⭐
+function showSyncStatus() {
+    if (pendingDeletions.length > 0) {
+        console.log(`🔄 ${pendingDeletions.length} data menunggu sync:`, pendingDeletions);
+    } else {
+        console.log('✅ Semua data tersinkronisasi');
+    }
+}
+
+// Test di console: showSyncStatus()
 // Fungsi untuk generate ID unik - FULL ANGKA
 function generateId() {
     // ⭐⭐ 8 DIGIT RANDOM ANGKA ⭐⭐
@@ -1331,7 +1394,24 @@ function setupEventListeners() {
             closeModal();
         }
     });
+	// ⭐⭐ EVENT LISTENERS BARU UNTUK ONLINE/OFFLINE SYNC ⭐⭐
+    window.addEventListener('online', function() {
+        console.log('🌐 Online, syncing pending deletions...');
+        syncPendingDeletions();
+    });
     
+    window.addEventListener('offline', function() {
+        console.log('📴 Offline mode');
+    });
+    
+    // ⭐⭐ AUTO SYNC SETIAP 30 DETIK ⭐⭐
+    setInterval(() => {
+        if (navigator.onLine && pendingDeletions.length > 0) {
+            console.log('⏰ Periodic sync check...');
+            syncPendingDeletions();
+        }
+    }, 30000);
+	
     console.log('All event listeners setup completed');
 }
 
@@ -1365,6 +1445,7 @@ function showSection(sectionId) {
     }
 
 }
+
 
 
 
