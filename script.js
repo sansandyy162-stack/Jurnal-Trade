@@ -275,8 +275,7 @@ async function deleteDataFromSheets(id) {
     }
 }
 
-// Fungsi untuk menghapus data trading - TAMBAHKAN INI (replace yang existing jika ada)
-// Fungsi untuk menghapus data trading - PERBAIKI INI
+// Fungsi untuk menghapus data trading - SOLUSI OPTIMAL
 async function deleteTradingData(id) {
     if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) {
         return;
@@ -294,9 +293,8 @@ async function deleteTradingData(id) {
         
         console.log('Data yang akan dihapus:', dataToDelete);
         
-        // Hapus dari Google Sheets terlebih dahulu
-        console.log('🗑️ Menghapus dari Google Sheets...');
-        const deleteSuccess = await deleteDataFromSheets(id);
+        // ⭐⭐ GUNAKAN KOMBINASI UNIK: kodeSaham + tanggalMasuk + hargaMasuk ⭐⭐
+        const deleteSuccess = await deleteDataByUniqueFields(dataToDelete);
         
         if (deleteSuccess) {
             // Hapus dari array lokal
@@ -313,6 +311,48 @@ async function deleteTradingData(id) {
     } catch (error) {
         console.error('Error deleting data:', error);
         alert('❌ Gagal menghapus data: ' + error.message);
+    }
+}
+
+// ⭐⭐ FUNGSI BARU: Hapus berdasarkan kombinasi unique fields ⭐⭐
+async function deleteDataByUniqueFields(data) {
+    try {
+        console.log('🗑️ Menghapus data berdasarkan unique fields...');
+        
+        const params = new URLSearchParams({
+            action: 'deleteByUniqueFields',
+            kodeSaham: String(data.kodeSaham || ''),
+            tanggalMasuk: String(data.tanggalMasuk || ''),
+            hargaMasuk: String(data.hargaMasuk || 0),
+            lot: String(data.lot || 1)
+        });
+        
+        const url = `${APPS_SCRIPT_URL}?${params}`;
+        console.log('Mengirim request ke:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET'
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Response dari Google Sheets:', result);
+        
+        if (result.error) {
+            throw new Error(`Google Sheets error: ${result.error}`);
+        }
+        
+        console.log('✅ Data berhasil dihapus dari Google Sheets:', result);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Gagal menghapus dari Google Sheets:', error);
+        throw error;
     }
 }
 
@@ -1325,6 +1365,7 @@ function showSection(sectionId) {
     }
 
 }
+
 
 
 
