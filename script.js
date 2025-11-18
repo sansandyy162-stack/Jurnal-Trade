@@ -177,27 +177,40 @@ function loadFromLocalStorage() {
 */
 
 // Fungsi untuk save data ke Google Apps Script - FIXED VERSION (NO LOCALSTORAGE)
+// ⭐⭐ GANTI fungsi saveData dengan ini: ⭐⭐
 async function saveData() {
     console.log('💾 Menyimpan data ke Google Sheets...');
     console.log('Data to save:', tradingData);
     
-    // ⭐⭐ HAPUS localStorage fallback ⭐⭐
-    // SELALU coba simpan ke Google Sheets, bahkan jika sebelumnya error
-    
     try {
         console.log('🔄 Mengirim data ke Google Apps Script...');
         
-        // Kirim semua data ke server
-        const params = new URLSearchParams({
-            action: 'saveAllData',
-            data: JSON.stringify(tradingData)
-        });
+        // GUNAKAN addData UNTUK SINGLE RECORD
+        const latestData = tradingData[tradingData.length - 1]; // Ambil data terbaru
+        const requestData = {
+            action: 'addData',
+            id: latestData.id,
+            tanggalMasuk: latestData.tanggalMasuk,
+            tanggalKeluar: latestData.tanggalKeluar,
+            kodeSaham: latestData.kodeSaham,
+            hargaMasuk: latestData.hargaMasuk,
+            hargaKeluar: latestData.hargaKeluar,
+            lot: latestData.lot,
+            feeBroker: latestData.feeBroker,
+            metodeTrading: latestData.metodeTrading,
+            catatan: latestData.catatan,
+            profitLoss: latestData.profitLoss
+        };
         
         console.log('Mengirim request ke:', APPS_SCRIPT_URL);
+        console.log('Request data:', requestData);
         
         const response = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
-            body: params
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
         });
         
         console.log('Response status:', response.status);
@@ -209,24 +222,19 @@ async function saveData() {
         const result = await response.json();
         console.log('Response dari Google Sheets:', result);
         
-        // Handle error response
         if (result.error) {
             throw new Error(`Google Sheets error: ${result.error}`);
         }
         
         console.log('✅ Data berhasil disimpan ke Google Sheets:', result);
-        return true; // Return success
+        return true;
         
     } catch (error) {
         console.error('❌ Gagal menyimpan ke Google Sheets:', error);
-        
-        // ⭐⭐ TIDAK fallback ke localStorage ⭐⭐
-        // Biarkan error, user akan tahu ada masalah dengan Google Sheets
         alert('❌ Gagal menyimpan data ke Google Sheets!\n\nError: ' + error.message + '\n\nCoba refresh halaman dan coba lagi.');
-        return false; // Return failure
+        return false;
     }
 }
-
 // Fungsi untuk generate ID unik
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -1171,4 +1179,5 @@ function showSection(sectionId) {
         displayMetodePerformance();
         displayTradingSummary();
     }
+
 }
