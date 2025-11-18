@@ -186,20 +186,20 @@ async function saveData() {
         
         const latestData = tradingData[tradingData.length - 1];
         
-        // ⭐⭐ BUAT URL DENGAN PARAMETERS ⭐⭐
+       // ⭐⭐ PASTIKAN SEMUA DATA DIKIRIM SEBAGAI STRING/PRIMITIVE ⭐⭐
         const params = new URLSearchParams({
             action: 'addData',
-            id: latestData.id || '',
-            tanggalMasuk: latestData.tanggalMasuk || '',
-            tanggalKeluar: latestData.tanggalKeluar || '',
-            kodeSaham: latestData.kodeSaham || '',
-            hargaMasuk: latestData.hargaMasuk || 0,
-            hargaKeluar: latestData.hargaKeluar || 0,
-            lot: latestData.lot || 1,
-            feeBroker: latestData.feeBroker || 0.4026,
-            metodeTrading: latestData.metodeTrading || 'Scalping',
-            catatan: latestData.catatan || '',
-            profitLoss: latestData.profitLoss || 0
+            id: String(latestData.id || ''),
+            tanggalMasuk: String(latestData.tanggalMasuk || ''),
+            tanggalKeluar: String(latestData.tanggalKeluar || ''),
+            kodeSaham: String(latestData.kodeSaham || ''),
+            hargaMasuk: String(latestData.hargaMasuk || 0),
+            hargaKeluar: String(latestData.hargaKeluar || 0),
+            lot: String(latestData.lot || 1),
+            feeBroker: String(latestData.feeBroker || 0.4026),
+            metodeTrading: String(latestData.metodeTrading || 'Scalping'),
+            catatan: String(latestData.catatan || ''),
+            profitLoss: String(latestData.profitLoss || 0)
         });
         
         const urlWithParams = `${APPS_SCRIPT_URL}?${params.toString()}`;
@@ -1181,5 +1181,6 @@ function showSection(sectionId) {
     }
 
 }
+
 
 
