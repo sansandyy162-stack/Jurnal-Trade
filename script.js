@@ -98,8 +98,6 @@ function showSection(sectionId) {
     }
 }
 
-// Fungsi untuk load data dari Google Apps Script - VERSI SIMPLE
-// Fungsi untuk load data dari Google Apps Script - FIXED VERSION
 // Fungsi untuk load data dari Google Apps Script - FIXED VERSION
 async function loadData() {
     try {
@@ -233,7 +231,73 @@ async function saveData() {
         return false;
     }
 }
+// Fungsi untuk menghapus data dari Google Sheets - TAMBAHKAN INI
+async function deleteDataFromSheets(id) {
+    try {
+        console.log('🗑️ Menghapus data dari Google Sheets...');
+        console.log('ID to delete:', id);
+        
+        const params = new URLSearchParams({
+            action: 'deleteData',
+            id: String(id)
+        });
+        
+        const url = `${APPS_SCRIPT_URL}?${params}`;
+        console.log('Mengirim request ke:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET'
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Response dari Google Sheets:', result);
+        
+        if (result.error) {
+            throw new Error(`Google Sheets error: ${result.error}`);
+        }
+        
+        console.log('✅ Data berhasil dihapus dari Google Sheets:', result);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Gagal menghapus dari Google Sheets:', error);
+        alert('❌ Gagal menghapus data dari Google Sheets!\n\nError: ' + error.message);
+        return false;
+    }
+}
 
+// Fungsi untuk menghapus data trading - TAMBAHKAN INI (replace yang existing jika ada)
+async function deleteTradingData(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+        return;
+    }
+    
+    try {
+        // Hapus dari Google Sheets terlebih dahulu
+        const deleteSuccess = await deleteDataFromSheets(id);
+        
+        if (deleteSuccess) {
+            // Hapus dari array lokal
+            tradingData = tradingData.filter(item => item.id !== id);
+            
+            // Update tampilan
+            updateHomeSummary();
+            displayTradingData();
+            
+            // Tampilkan notifikasi
+            alert('✅ Data berhasil dihapus dari Google Sheets!');
+        }
+    } catch (error) {
+        console.error('Error deleting data:', error);
+        alert('❌ Gagal menghapus data: ' + error.message);
+    }
+}
 
 // Fungsi untuk generate ID unik
 function generateId() {
@@ -370,6 +434,45 @@ async function handleFormSubmit(event) {
     } catch (error) {
         console.error('Error in form submission:', error);
         alert('❌ Error menyimpan data: ' + error.message);
+    }
+}
+async function deleteDataFromSheets(id) {
+    try {
+        console.log('🗑️ Menghapus data dari Google Sheets...');
+        console.log('ID to delete:', id);
+        
+        const params = new URLSearchParams({
+            action: 'deleteData',
+            id: String(id)
+        });
+        
+        const url = `${APPS_SCRIPT_URL}?${params}`;
+        console.log('Mengirim request ke:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET'
+        });
+        
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Response dari Google Sheets:', result);
+        
+        if (result.error) {
+            throw new Error(`Google Sheets error: ${result.error}`);
+        }
+        
+        console.log('✅ Data berhasil dihapus dari Google Sheets:', result);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Gagal menghapus dari Google Sheets:', error);
+        alert('❌ Gagal menghapus data dari Google Sheets!\n\nError: ' + error.message);
+        return false;
     }
 }
 
@@ -618,11 +721,11 @@ function displayTradingData(filteredData = null) {
     });
     
     document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.target.getAttribute('data-id');
-            deleteTradingData(id);
-        });
-    });
+    btn.addEventListener('click', (e) => {
+        const id = e.target.getAttribute('data-id');
+        deleteTradingData(id); // ⭐⭐ Pastikan panggil fungsi yang baru ⭐⭐
+   		 });
+		});
 }
 
 // Format tanggal
@@ -1181,6 +1284,7 @@ function showSection(sectionId) {
     }
 
 }
+
 
 
 
