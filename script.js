@@ -206,7 +206,7 @@ async function saveData() {
         console.log('Request data:', requestData);
         
         const response = await fetch(APPS_SCRIPT_URL, {
-            method: 'POST',
+            method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -1181,3 +1181,4 @@ function showSection(sectionId) {
     }
 
 }
+
