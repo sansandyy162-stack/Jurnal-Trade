@@ -1,0 +1,2 @@
+# Jurnal-Trade
+jurnal trading
